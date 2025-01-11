@@ -2,108 +2,126 @@
 <html>
 <head>
     <title>Google Maps with Circles</title>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCuThOGFiWKfdFpvRywRgWVekZvhCoUFt0&callback=initMap" async defer></script>
+    <meta charset="UTF-8"> <!-- 文字コードをUTF-8に設定 -->
     <style>
-        /* Set the size of the map */
         #map {
-            height: 100%;
+            height: 90vh;
             width: 100%;
         }
-        /* Ensure the body and html elements take up full screen height */
-        html, body {
-            height: 100%;
-            margin: 0;
+        #controls {
+            margin: 10px;
         }
     </style>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCuThOGFiWKfdFpvRywRgWVekZvhCoUFt0&callback=initMap" async defer></script>
 </head>
 <body>
-    <div id="map" style="height: 100vh;"></div> <!-- 地図を表示するために高さを指定 -->
+    <div id="controls">
+        <label for="prefecture">都道府県を選択：</label>
+        <select id="prefecture">
+            <option value="all">全て表示</option>
+        </select>
+    </div>
+    <div id="map"></div> <!-- 地図を表示 -->
+
     <script>
-        var currentInfoWindow = null;  // 現在開いている情報ウィンドウを保持する変数
+        let map;
+        let markers = [];
+        let circles = [];
+        let prefectures = new Set();
 
         function initMap() {
-            // Mapの初期設定（日本全体を表示できるように中心座標とズームレベルを設定）
-            var map = new google.maps.Map(document.getElementById('map'), {
-                center: {lat: 37.5, lng: 137.5}, // 日本全体を表示するための中心座標
-                zoom: 5  // ズームレベル5で日本全体を表示
+            // 地図の初期設定
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: {lat: 37.5, lng: 137.5},
+                zoom: 5
             });
 
-            // CSVファイルを読み込む
-            fetch('AP.csv')  // CSVファイル名を 'AP.csv' に変更
-                .then(response => response.text())  // テキストとしてCSVを読み込む
+            // CSVデータを読み込む
+            fetch("AP.csv")
+                .then(response => response.text())
                 .then(csvContent => {
-                    var locations = parseCSV(csvContent);  // CSVをパース
-                    plotLocations(map, locations);  // 地図に描画
+                    const locations = parseCSV(csvContent);
+                    plotLocations(locations);
+                    populatePrefectureDropdown();
                 })
-                .catch(error => console.error('CSVファイルの読み込みエラー:', error));
+                .catch(error => console.error("CSVの読み込みエラー:", error));
         }
 
-        // CSVをパースして座標を抽出する関数
+        // グローバルスコープにinitMapを設定
+        window.initMap = initMap;
+
         function parseCSV(csvContent) {
-            var locations = [];
-            var rows = csvContent.split('\n');  // 改行で行を分ける
-            rows.slice(1).forEach(function(row) {  // 1行目はヘッダなのでスキップ
-                var columns = row.split(',');  // カンマで分割
-                if (columns.length >= 3) {  // 緯度・経度・名称がある場合
-                    var lng = parseFloat(columns[1].trim());  // 経度（2列目）
-                    var lat = parseFloat(columns[2].trim());  // 緯度（3列目）
-                    if (!isNaN(lat) && !isNaN(lng)) {  // 数値として有効か確認
-                        var name = columns[0].trim();  // 名称（セイバン）
-                        locations.push({lat: lat, lng: lng, name: name});  // 配列に追加
+            const locations = [];
+            const rows = csvContent.split("\n");
+            rows.slice(1).forEach(row => {
+                const columns = row.split(",");
+                if (columns.length >= 4) {
+                    const name = columns[0].trim();
+                    const lng = parseFloat(columns[1].trim());
+                    const lat = parseFloat(columns[2].trim());
+                    const prefecture = columns[3].trim();
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        locations.push({ name, lng, lat, prefecture });
+                        prefectures.add(prefecture);
                     }
                 }
             });
             return locations;
         }
 
-        // 各地点にマーカーと円を描画する関数
-        function plotLocations(map, locations) {
-            locations.forEach(function(location) {
-                // マーカーを作成
-                var marker = new google.maps.Marker({
+        function plotLocations(locations) {
+            locations.forEach(location => {
+                const marker = new google.maps.Marker({
                     position: {lat: location.lat, lng: location.lng},
-                    map: map
-                    // title プロパティを削除
+                    map: map,
+                    title: location.name
                 });
 
-                // 半径40kmの円を描画
-                var circle = new google.maps.Circle({
+                const circle = new google.maps.Circle({
                     map: map,
                     center: {lat: location.lat, lng: location.lng},
-                    radius: 40000,  // 半径40km（メートル）
-                    strokeColor: '#FF0000',
+                    radius: 40000,
+                    strokeColor: "#FF0000",
                     strokeOpacity: 0.8,
                     strokeWeight: 2,
-                    fillColor: '#FF0000',
-                    fillOpacity: 0.1  // 透過度を0.1に設定
+                    fillColor: "#FF0000",
+                    fillOpacity: 0.1
                 });
 
-                // マーカーにマウスオーバーで地点名を表示
-                marker.addListener('mouseover', function() {
-                    // 現在開いている情報ウィンドウがあれば閉じる
-                    if (currentInfoWindow) {
-                        currentInfoWindow.close();
-                    }
+                markers.push({ marker, prefecture: location.prefecture });
+                circles.push({ circle, prefecture: location.prefecture });
+            });
+        }
 
-                    // 情報ウィンドウを作成
-                    var infoWindow = new google.maps.InfoWindow({
-                        content: location.name,
-                        disableAutoPan: true  // 自動的に位置を調整しないようにする
-                    });
+        function populatePrefectureDropdown() {
+            const dropdown = document.getElementById("prefecture");
+            prefectures.forEach(prefecture => {
+                const option = document.createElement("option");
+                option.value = prefecture;
+                option.textContent = prefecture;
+                dropdown.appendChild(option);
+            });
 
-                    // 情報ウィンドウを開く
-                    infoWindow.open(map, marker);
+            dropdown.addEventListener("change", function () {
+                filterByPrefecture(this.value);
+            });
+        }
 
-                    // 現在開いている情報ウィンドウを保持
-                    currentInfoWindow = infoWindow;
-                });
+        function filterByPrefecture(selectedPrefecture) {
+            markers.forEach(({ marker, prefecture }) => {
+                if (selectedPrefecture === "all" || prefecture === selectedPrefecture) {
+                    marker.setMap(map);
+                } else {
+                    marker.setMap(null);
+                }
+            });
 
-                // マーカーからマウスアウトで情報ウィンドウを閉じる
-                marker.addListener('mouseout', function() {
-                    if (currentInfoWindow) {
-                        currentInfoWindow.close();  // 情報ウィンドウを閉じる
-                    }
-                });
+            circles.forEach(({ circle, prefecture }) => {
+                if (selectedPrefecture === "all" || prefecture === selectedPrefecture) {
+                    circle.setMap(map);
+                } else {
+                    circle.setMap(null);
+                }
             });
         }
     </script>
