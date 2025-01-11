@@ -15,7 +15,6 @@
             margin-right: 10px;
         }
     </style>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCuThOGFiWKfdFpvRywRgWVekZvhCoUFt0&callback=initMap" async defer></script>
 </head>
 <body>
     <div id="controls">
@@ -130,4 +129,35 @@
 
             // イベントリスナーを追加
             dropdown.addEventListener("change", function () {
-  
+                const selectedOptions = Array.from(this.selectedOptions).map(option => option.value);
+                filterByPrefecture(selectedOptions);
+            });
+        }
+
+        // 都道府県による表示・非表示の切り替え（複数選択対応）
+        function filterByPrefecture(selectedPrefectures) {
+            const showAll = selectedPrefectures.includes("all");
+
+            markers.forEach(({ marker, prefecture }) => {
+                if (showAll || selectedPrefectures.includes(prefecture)) {
+                    marker.setMap(map); // 表示
+                } else {
+                    marker.setMap(null); // 非表示
+                }
+            });
+
+            circles.forEach(({ circle, prefecture }) => {
+                if (showAll || selectedPrefectures.includes(prefecture)) {
+                    circle.setMap(map); // 表示
+                } else {
+                    circle.setMap(null); // 非表示
+                }
+            });
+        }
+
+        // グローバルスコープにinitMapを設定
+        window.initMap = initMap;
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCuThOGFiWKfdFpvRywRgWVekZvhCoUFt0" async defer></script>
+</body>
+</html>
