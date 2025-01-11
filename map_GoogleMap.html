@@ -3,18 +3,20 @@
 <head>
     <title>Google Maps with Circles</title>
     <meta charset="UTF-8"> <!-- 文字コードをUTF-8に設定 -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCuThOGFiWKfdFpvRywRgWVekZvhCoUFt0&callback=initMap" async defer></script>
     <style>
-        /* Mapのスタイル */
         #map {
             height: 90vh;
             width: 100%;
         }
-        /* ドロップダウンメニューのスタイル */
         #controls {
             margin: 10px;
         }
+        #prefecture {
+            width: 200px;
+            height: 150px;
+        }
     </style>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCuThOGFiWKfdFpvRywRgWVekZvhCoUFt0&callback=initMap" async defer></script>
 </head>
 <body>
     <div id="controls">
@@ -72,14 +74,12 @@
         // マーカーと円を描画
         function plotLocations(locations) {
             locations.forEach(location => {
-                // マーカーを作成
                 const marker = new google.maps.Marker({
                     position: {lat: location.lat, lng: location.lng},
                     map: map,
                     title: location.name
                 });
 
-                // 円を作成
                 const circle = new google.maps.Circle({
                     map: map,
                     center: {lat: location.lat, lng: location.lng},
@@ -91,7 +91,6 @@
                     fillOpacity: 0.1
                 });
 
-                // マーカーと円を配列に追加
                 markers.push({ marker, prefecture: location.prefecture });
                 circles.push({ circle, prefecture: location.prefecture });
             });
@@ -109,14 +108,17 @@
 
             // イベントリスナーを追加
             dropdown.addEventListener("change", function () {
-                filterByPrefecture(this.value);
+                const selectedOptions = Array.from(this.selectedOptions).map(option => option.value);
+                filterByPrefecture(selectedOptions);
             });
         }
 
-        // 都道府県による表示・非表示の切り替え
-        function filterByPrefecture(selectedPrefecture) {
+        // 都道府県による表示・非表示の切り替え（複数選択対応）
+        function filterByPrefecture(selectedPrefectures) {
+            const showAll = selectedPrefectures.includes("all");
+
             markers.forEach(({ marker, prefecture }) => {
-                if (selectedPrefecture === "all" || prefecture === selectedPrefecture) {
+                if (showAll || selectedPrefectures.includes(prefecture)) {
                     marker.setMap(map); // 表示
                 } else {
                     marker.setMap(null); // 非表示
@@ -124,7 +126,7 @@
             });
 
             circles.forEach(({ circle, prefecture }) => {
-                if (selectedPrefecture === "all" || prefecture === selectedPrefecture) {
+                if (showAll || selectedPrefectures.includes(prefecture)) {
                     circle.setMap(map); // 表示
                 } else {
                     circle.setMap(null); // 非表示
