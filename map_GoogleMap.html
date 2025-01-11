@@ -37,7 +37,8 @@
             // 地図の初期設定
             map = new google.maps.Map(document.getElementById("map"), {
                 center: {lat: 37.5, lng: 137.5}, // 日本全体が見えるように設定
-                zoom: 5
+                zoom: 5,
+                gestureHandling: "greedy" // スクロール動作を通常の設定に変更
             });
 
             // CSVデータを読み込む
