@@ -4,15 +4,36 @@
     <title>Google Maps with Circles</title>
     <meta charset="UTF-8"> <!-- 文字コードをUTF-8に設定 -->
     <style>
+        /* 全体のスタイル調整 */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* スクロールバーを非表示に */
+            box-sizing: border-box;
+        }
+
         #map {
-            height: 90vh;
+            height: calc(100vh - 50px); /* 地図を画面いっぱいに表示し、コントロール分を差し引く */
             width: 100%;
         }
+
         #controls {
-            margin: 10px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            background-color: #f8f8f8; /* 背景色を追加 */
+            border-bottom: 1px solid #ccc; /* 境界線を追加 */
+            box-sizing: border-box;
         }
+
         #prefecture, #radiusInput {
             margin-right: 10px;
+        }
+
+        button {
+            height: 30px;
         }
     </style>
 </head>
