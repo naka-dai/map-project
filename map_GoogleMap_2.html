@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Google Maps with Circles</title>
+    <meta charset="UTF-8"> <!-- 文字コードをUTF-8に設定 -->
+    <style>
+        #map {
+            height: 80vh;
+            width: 100%;
+        }
+        #controls {
+            margin: 10px;
+        }
+        #prefecture {
+            width: 200px;
+            height: 150px;
+        }
+    </style>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCuThOGFiWKfdFpvRywRgWVekZvhCoUFt0&callback=initMap" async defer></script>
+</head>
+<body>
+    <div id="controls">
+        <label for="prefecture">都道府県を選択：</label>
+        <select id="prefecture" multiple> <!-- 複数選択を有効化 -->
+            <option value="all">全て表示</option>
+        </select>
+        <label for="radiusInput">円の半径（km）：</label>
+        <input id="radiusInput" type="number" value="40" min="1" step="1"> <!-- 半径入力用 -->
+        <button id="updateRadius">更新</button> <!-- 半径を更新するボタン -->
+    </div>
+    <div id="map"></div> <!-- 地図を表示 -->
+
+    <script>
+        let map; // 地図オブジェクト
+        let markers = []; // マーカーの配列
+        let circles = []; // 円の配列
+        let prefectures = new Set(); // 都道府県のセット
+        let radius = 40000; // 初期半径（40km）
+
+        function initMap() {
+            // 地図の初期設定
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: {lat: 37.5, lng: 137.5}, // 日本全体が見えるように設定
+                zoom: 5,
+                gestureHandling: "greedy" // スクロール動作を通常の設定に変更
+            });
+
+            // CSVデータを読み込む
+            fetch("AP_gouzai.csv")
+                .then(response => response.text())
+                .then(csvContent => {
+                    const locations = parseCSV(csvContent);
+                    plotLocations(locations);
+                    populatePrefectureDropdown(); // 都道府県選択メニューを生成
+                })
+                .catch(error => console.error("CSVの読み込みエラー:", error));
+
+            // 半径更新ボタンにイベントリスナーを追加
+            document.getElementById("updateRadius").addEventListener("click", function () {
+                const newRadius = parseFloat(document.getElementById("radiusInput").value);
+                if (!isNaN(newRadius) && newRadius > 0) {
+                    radius = newRadius * 1000; // km を m に変換
+                    updateCircleRadius(); // 円の半径を更新
+                } else {
+                    alert("有効な半径を入力してください（1以上の数値）。");
+                }
+            });
+        }
+
+        // CSVをパースして座標を抽出
+        function parseCSV(csvContent) {
+            const locations = [];
+            const rows = csvContent.split("\n");
+            rows.slice(1).forEach(row => { // 1行目はヘッダー
+                const columns = row.split(",");
+                if (columns.length >= 4) {
+                    const name = columns[0].trim(); // 名称
+                    const lng = parseFloat(columns[1].trim()); // 経度
+                    const lat = parseFloat(columns[2].trim()); // 緯度
+                    const prefecture = columns[3].trim(); // 都道府県
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        locations.push({ name, lng, lat, prefecture });
+                        prefectures.add(prefecture); // 都道府県リストに追加
+                    }
+                }
+            });
+            return locations;
+        }
+
+        // マーカーと円を描画
+        function plotLocations(locations) {
+            locations.forEach(location => {
+                const marker = new google.maps.Marker({
+                    position: {lat: location.lat, lng: location.lng},
+                    map: map,
+                    title: location.name
+                });
+
+                const circle = new google.maps.Circle({
+                    map: map,
+                    center: {lat: location.lat, lng: location.lng},
+                    radius: radius, // 初期半径を設定
+                    strokeColor: "#FF0000",
+                    strokeOpacity: 0.8,
+                    strokeWeight: 2,
+                    fillColor: "#FF0000",
+                    fillOpacity: 0.1
+                });
+
+                markers.push({ marker, prefecture: location.prefecture });
+                circles.push({ circle, prefecture: location.prefecture });
+            });
+        }
+
+        // 円の半径を更新
+        function updateCircleRadius() {
+            circles.forEach(circle => {
+                circle.circle.setRadius(radius); // 新しい半径を適用
+            });
+        }
+
+        // 都道府県選択メニューを生成
+        function populatePrefectureDropdown() {
+            const dropdown = document.getElementById("prefecture");
+            prefectures.forEach(prefecture => {
+                const option = document.createElement("option");
+                option.value = prefecture;
+                option.textContent = prefecture;
+                dropdown.appendChild(option);
+            });
+
+            // イベントリスナーを追加
+            dropdown.addEventListener("change", function () {
+                const selectedOptions = Array.from(this.selectedOptions).map(option => option.value);
+                filterByPrefecture(selectedOptions);
+            });
+        }
+
+        // 都道府県による表示・非表示の切り替え（複数選択対応）
+        function filterByPrefecture(selectedPrefectures) {
+            const showAll = selectedPrefectures.includes("all");
+
+            markers.forEach(({ marker, prefecture }) => {
+                if (showAll || selectedPrefectures.includes(prefecture)) {
+                    marker.setMap(map); // 表示
+                } else {
+                    marker.setMap(null); // 非表示
+                }
+            });
+
+            circles.forEach(({ circle, prefecture }) => {
+                if (showAll || selectedPrefectures.includes(prefecture)) {
+                    circle.setMap(map); // 表示
+                } else {
+                    circle.setMap(null); // 非表示
+                }
+            });
+        }
+    </script>
+</body>
+</html>
