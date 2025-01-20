@@ -12,7 +12,7 @@
             margin: 10px;
         }
     </style>
-    <!-- APIのロード時にcallbackを削除 -->
+    <!-- Google Maps APIをロード -->
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCuThOGFiWKfdFpvRywRgWVekZvhCoUFt0&callback=initMap" async defer></script>
 </head>
 <body>
@@ -45,11 +45,9 @@
                 { lat: 34.6937, lng: 135.5023 }, // 大阪
             ];
 
-            // 初期経路描画
             const radiusKm = parseFloat(document.getElementById("radiusInput").value);
             locations.forEach(location => calculateRoutes(location, radiusKm));
 
-            // 距離を変更した場合の更新処理
             document.getElementById("updateRoutes").addEventListener("click", () => {
                 const newRadius = parseFloat(document.getElementById("radiusInput").value);
                 if (isNaN(newRadius) || newRadius <= 0) {
@@ -98,12 +96,12 @@
 
         function generateCirclePoints(origin, radiusKm) {
             const points = [];
-            const numPoints = 36; // 10°ごとに分割
+            const numPoints = 36;
 
             for (let i = 0; i < numPoints; i++) {
                 const angleRad = (i * Math.PI * 2) / numPoints;
-                const latOffset = (radiusKm / 111) * Math.cos(angleRad); // 緯度変位
-                const lngOffset = (radiusKm / (111 * Math.cos((origin.lat * Math.PI) / 180))) * Math.sin(angleRad); // 経度変位
+                const latOffset = (radiusKm / 111) * Math.cos(angleRad);
+                const lngOffset = (radiusKm / (111 * Math.cos((origin.lat * Math.PI) / 180))) * Math.sin(angleRad);
                 points.push({
                     lat: origin.lat + latOffset,
                     lng: origin.lng + lngOffset,
@@ -115,7 +113,7 @@
         function getTotalDistance(legs) {
             let totalDistance = 0;
             legs.forEach(leg => {
-                totalDistance += leg.distance.value; // メートル単位
+                totalDistance += leg.distance.value;
             });
             return totalDistance;
         }
