@@ -1,124 +1,154 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Google Maps Directions API</title>
-    <meta charset="UTF-8">
-    <style>
-        #map {
-            height: 80vh;
-            width: 100%;
-        }
-        #controls {
-            margin: 10px;
-        }
-    </style>
+  <title>Google Maps Directions API</title>
+  <meta charset="UTF-8">
+  <style>
+    /* マップ表示領域 */
+    #map {
+      height: 80vh;
+      width: 100%;
+    }
+    /* コントロールボックス */
+    #controls {
+      margin: 10px;
+    }
+  </style>
 </head>
 <body>
-    <div id="controls">
-        <label for="radiusInput">距離（km）：</label>
-        <input id="radiusInput" type="number" value="40" min="1" step="1">
-        <button id="updateRoutes">経路を更新</button>
-    </div>
-    <div id="map"></div>
+  <div id="controls">
+    <label for="radiusInput">距離（km）：</label>
+    <input id="radiusInput" type="number" value="40" min="1" step="1">
+    <button id="updateRoutes">経路を更新</button>
+  </div>
+  <div id="map"></div>
 
-    <!-- Google Maps API -->
-    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCuThOGFiWKfdFpvRywRgWVekZvhCoUFt0&callback=initMap"></script>
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            let map;
-            let directionsService;
-            let directionsRenderers = [];
+  <!-- Google Maps API (async / defer 推奨) -->
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCuThOGFiWKfdFpvRywRgWVekZvhCoUFt0&callback=initMap"
+    async defer>
+  </script>
+  <script>
+    let map;
+    let directionsService;
+    let directionsRenderers = [];
 
-            function initializeMap() {
-                map = new google.maps.Map(document.getElementById("map"), {
-                    center: { lat: 35.6762, lng: 139.6503 }, // 日本中心
-                    zoom: 8,
+    /**
+     * Google Maps API のコールバック関数
+     * （script タグの callback=initMap に対応させる）
+     */
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 35.6762, lng: 139.6503 }, // 日本中心
+        zoom: 8,
+      });
+
+      directionsService = new google.maps.DirectionsService();
+
+      const locations = [
+        { lat: 35.6895, lng: 139.6917 }, // 東京
+        { lat: 34.6937, lng: 135.5023 }, // 大阪
+      ];
+
+      // 最初に 40km の描画を実行
+      drawRoutes(locations);
+
+      // ボタンイベントで描画を再実行
+      document.getElementById("updateRoutes").addEventListener("click", () => {
+        const newRadius = parseFloat(document.getElementById("radiusInput").value);
+        if (isNaN(newRadius) || newRadius <= 0) {
+          alert("有効な距離を入力してください。");
+          return;
+        }
+        clearRoutes();
+        drawRoutes(locations, newRadius);
+      });
+    }
+
+    /**
+     * 指定した各ロケーションから「半径 radiusKm の円周上」へのルートを引く
+     */
+    function drawRoutes(locations, radiusKm = 40) {
+      locations.forEach(location => calculateRoutes(location, radiusKm));
+    }
+
+    /**
+     * 各起点(origin)から円周上の地点(destinations)まで Driving ルートを取得し、
+     * 条件(指定距離以内)を満たしたルートのみ描画する
+     */
+    function calculateRoutes(origin, radiusKm) {
+      const destinations = generateCirclePoints(origin, radiusKm);
+
+      destinations.forEach(destination => {
+        const request = {
+          origin: origin,
+          destination: destination,
+          travelMode: 'DRIVING',
+        };
+
+        directionsService.route(request, (result, status) => {
+          if (status === 'OK') {
+            if (result.routes[0] && result.routes[0].legs) {
+              const totalDistance = getTotalDistance(result.routes[0].legs);
+              if (totalDistance <= radiusKm * 1000) {
+                const directionsRenderer = new google.maps.DirectionsRenderer({
+                  map: map,
+                  suppressMarkers: true,
+                  polylineOptions: {
+                    strokeColor: '#FF0000',
+                    strokeOpacity: 0.6,
+                    strokeWeight: 3,
+                  },
                 });
-
-                directionsService = new google.maps.DirectionsService();
-
-                const locations = [
-                    { lat: 35.6895, lng: 139.6917 }, // 東京
-                    { lat: 34.6937, lng: 135.5023 }, // 大阪
-                ];
-
-                drawRoutes(locations);
-
-                document.getElementById("updateRoutes").addEventListener("click", () => {
-                    const newRadius = parseFloat(document.getElementById("radiusInput").value);
-                    if (isNaN(newRadius) || newRadius <= 0) {
-                        alert("有効な距離を入力してください。");
-                        return;
-                    }
-                    clearRoutes();
-                    drawRoutes(locations, newRadius);
-                });
+                directionsRenderer.setDirections(result);
+                directionsRenderers.push(directionsRenderer);
+              }
             }
-
-            function drawRoutes(locations, radiusKm = 40) {
-                locations.forEach(location => calculateRoutes(location, radiusKm));
-            }
-
-            function calculateRoutes(origin, radiusKm) {
-                const destinations = generateCirclePoints(origin, radiusKm);
-
-                destinations.forEach(destination => {
-                    const request = {
-                        origin: origin,
-                        destination: destination,
-                        travelMode: 'DRIVING',
-                    };
-
-                    directionsService.route(request, (result, status) => {
-                        if (status === 'OK') {
-                            const totalDistance = getTotalDistance(result.routes[0].legs);
-                            if (totalDistance <= radiusKm * 1000) {
-                                const directionsRenderer = new google.maps.DirectionsRenderer({
-                                    map: map,
-                                    suppressMarkers: true,
-                                    polylineOptions: {
-                                        strokeColor: '#FF0000',
-                                        strokeOpacity: 0.6,
-                                        strokeWeight: 3,
-                                    },
-                                });
-                                directionsRenderer.setDirections(result);
-                                directionsRenderers.push(directionsRenderer);
-                            }
-                        } else {
-                            console.warn(`ルートが見つかりません: ${JSON.stringify(destination)}`);
-                        }
-                    });
-                });
-            }
-
-            function generateCirclePoints(origin, radiusKm) {
-                const points = [];
-                const numPoints = 8; // 主要方向に限定
-
-                for (let i = 0; i < numPoints; i++) {
-                    const angleRad = (i * Math.PI * 2) / numPoints;
-                    const latOffset = (radiusKm / 111) * Math.cos(angleRad);
-                    const lngOffset = (radiusKm / (111 * Math.cos((origin.lat * Math.PI) / 180))) * Math.sin(angleRad);
-                    points.push({
-                        lat: origin.lat + latOffset,
-                        lng: origin.lng + lngOffset,
-                    });
-                }
-                return points;
-            }
-
-            function getTotalDistance(legs) {
-                return legs.reduce((sum, leg) => sum + leg.distance.value, 0);
-            }
-
-            function clearRoutes() {
-                directionsRenderers.forEach(renderer => renderer.setMap(null));
-                directionsRenderers = [];
-            }
-
-            initializeMap();
+          } else {
+            // ルートが見つからなかった場合の警告
+            console.warn(`ルートが見つかりません: ${JSON.stringify(destination)}`);
+          }
         });
-    </script>
+      });
+    }
+
+    /**
+     * 任意の中心(origin)から radiusKm km の円周上の座標を生成 (主要方向8点に限定)
+     */
+    function generateCirclePoints(origin, radiusKm) {
+      const points = [];
+      const numPoints = 8; // 主要方向に限定（北・北東・東・南東・南・南西・西・北西）
+
+      for (let i = 0; i < numPoints; i++) {
+        const angleRad = (i * Math.PI * 2) / numPoints; // 0, 45, 90,...,315 度
+        // 緯度方向のオフセット計算 (1度 ≈ 111 km)
+        const latOffset = (radiusKm / 111) * Math.cos(angleRad);
+        // 経度方向のオフセット計算
+        // (1度 ≈ 111 * cos(中心緯度) km)
+        const lngOffset = (radiusKm / (111 * Math.cos((origin.lat * Math.PI) / 180))) * Math.sin(angleRad);
+
+        points.push({
+          lat: origin.lat + latOffset,
+          lng: origin.lng + lngOffset,
+        });
+      }
+      return points;
+    }
+
+    /**
+     * 複数の legs (区間) オブジェクトから総距離を取得 (メートル単位)
+     */
+    function getTotalDistance(legs) {
+      return legs.reduce((sum, leg) => sum + leg.distance.value, 0);
+    }
+
+    /**
+     * すでに描画されたルート(Polyline)を全削除
+     */
+    function clearRoutes() {
+      directionsRenderers.forEach(renderer => renderer.setMap(null));
+      directionsRenderers = [];
+    }
+  </script>
 </body>
 </html>
