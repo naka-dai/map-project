@@ -23,19 +23,20 @@
   </div>
   <div id="map"></div>
 
-  <!-- Google Maps API (async / defer 推奨) -->
+  <!-- Google Maps API を async / defer で読み込み (callbackパラメータは使用しない) -->
   <script
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCuThOGFiWKfdFpvRywRgWVekZvhCoUFt0&callback=initMap"
-    async defer>
+    async
+    defer>
   </script>
+
   <script>
     let map;
     let directionsService;
     let directionsRenderers = [];
 
     /**
-     * Google Maps API のコールバック関数
-     * （script タグの callback=initMap に対応させる）
+     * Google Maps の初期化
      */
     function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
@@ -45,15 +46,16 @@
 
       directionsService = new google.maps.DirectionsService();
 
+      // 東京・大阪
       const locations = [
         { lat: 35.6895, lng: 139.6917 }, // 東京
         { lat: 34.6937, lng: 135.5023 }, // 大阪
       ];
 
-      // 最初に 40km の描画を実行
+      // 初回 40km の描画
       drawRoutes(locations);
 
-      // ボタンイベントで描画を再実行
+      // ボタンイベントで再描画
       document.getElementById("updateRoutes").addEventListener("click", () => {
         const newRadius = parseFloat(document.getElementById("radiusInput").value);
         if (isNaN(newRadius) || newRadius <= 0) {
@@ -105,7 +107,6 @@
               }
             }
           } else {
-            // ルートが見つからなかった場合の警告
             console.warn(`ルートが見つかりません: ${JSON.stringify(destination)}`);
           }
         });
@@ -117,14 +118,11 @@
      */
     function generateCirclePoints(origin, radiusKm) {
       const points = [];
-      const numPoints = 8; // 主要方向に限定（北・北東・東・南東・南・南西・西・北西）
+      const numPoints = 8; // 北/北東/東/南東/南/南西/西/北西
 
       for (let i = 0; i < numPoints; i++) {
-        const angleRad = (i * Math.PI * 2) / numPoints; // 0, 45, 90,...,315 度
-        // 緯度方向のオフセット計算 (1度 ≈ 111 km)
+        const angleRad = (i * Math.PI * 2) / numPoints;
         const latOffset = (radiusKm / 111) * Math.cos(angleRad);
-        // 経度方向のオフセット計算
-        // (1度 ≈ 111 * cos(中心緯度) km)
         const lngOffset = (radiusKm / (111 * Math.cos((origin.lat * Math.PI) / 180))) * Math.sin(angleRad);
 
         points.push({
@@ -149,6 +147,16 @@
       directionsRenderers.forEach(renderer => renderer.setMap(null));
       directionsRenderers = [];
     }
+
+    // ウィンドウ読み込み完了後に Google Maps (initMap) を呼び出す
+    window.addEventListener('load', () => {
+      // Google Mapsのスクリプトが読み込まれているかチェック
+      if (typeof google === 'undefined' || !google.maps) {
+        console.error("Google Maps failed to load.");
+        return;
+      }
+      initMap();
+    });
   </script>
 </body>
 </html>
