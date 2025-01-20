@@ -12,7 +12,6 @@
             margin: 10px;
         }
     </style>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCuThOGFiWKfdFpvRywRgWVekZvhCoUFt0&callback=initMap" async></script>
 </head>
 <body>
     <div id="controls">
@@ -22,12 +21,14 @@
     </div>
     <div id="map"></div>
 
+    <!-- Google Maps API -->
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY"></script>
     <script>
         let map;
         let directionsService;
         let directionsRenderers = [];
 
-        // 地図の初期化
+        // Google Mapsの初期化
         function initializeMap() {
             map = new google.maps.Map(document.getElementById("map"), {
                 center: { lat: 35.6762, lng: 139.6503 }, // 日本中心
@@ -42,16 +43,8 @@
             ];
 
             drawRoutes(locations);
-        }
 
-        // 経路の描画
-        function drawRoutes(locations) {
-            const radiusKm = parseFloat(document.getElementById("radiusInput").value);
-
-            locations.forEach(location => {
-                calculateRoutes(location, radiusKm);
-            });
-
+            // ボタンイベントの設定
             document.getElementById("updateRoutes").addEventListener("click", () => {
                 const newRadius = parseFloat(document.getElementById("radiusInput").value);
                 if (isNaN(newRadius) || newRadius <= 0) {
@@ -59,9 +52,14 @@
                     return;
                 }
                 clearRoutes();
-                locations.forEach(location => {
-                    calculateRoutes(location, newRadius);
-                });
+                drawRoutes(locations, newRadius);
+            });
+        }
+
+        // 経路の描画
+        function drawRoutes(locations, radiusKm = 40) {
+            locations.forEach(location => {
+                calculateRoutes(location, radiusKm);
             });
         }
 
@@ -128,14 +126,14 @@
         }
 
         // Google Maps APIロード後に初期化
-        window.addEventListener("load", () => {
-            const checkGoogleLoaded = setInterval(() => {
-                if (typeof google !== "undefined" && google.maps) {
-                    clearInterval(checkGoogleLoaded);
+        window.onload = () => {
+            const intervalId = setInterval(() => {
+                if (typeof google !== 'undefined' && google.maps) {
+                    clearInterval(intervalId);
                     initializeMap();
                 }
             }, 100);
-        });
+        };
     </script>
 </body>
 </html>
