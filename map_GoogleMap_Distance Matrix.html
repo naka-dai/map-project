@@ -26,7 +26,6 @@
         let map;
         let directionsService;
         let directionsRenderers = [];
-        const radiusKm = 40; // 初期半径
 
         document.addEventListener("DOMContentLoaded", () => {
             initMap();
@@ -45,8 +44,11 @@
                 { lat: 34.6937, lng: 135.5023 }, // 大阪
             ];
 
+            // 初期経路描画
+            const radiusKm = parseFloat(document.getElementById("radiusInput").value);
             locations.forEach(location => calculateRoutes(location, radiusKm));
 
+            // 距離を変更した場合の更新処理
             document.getElementById("updateRoutes").addEventListener("click", () => {
                 const newRadius = parseFloat(document.getElementById("radiusInput").value);
                 if (isNaN(newRadius) || newRadius <= 0) {
@@ -71,7 +73,7 @@
                 directionsService.route(request, (result, status) => {
                     if (status === 'OK') {
                         const totalDistance = getTotalDistance(result.routes[0].legs);
-                        if (totalDistance <= radiusKm * 1000) { // 40km以内の経路のみ描画
+                        if (totalDistance <= radiusKm * 1000) {
                             const directionsRenderer = new google.maps.DirectionsRenderer({
                                 map: map,
                                 suppressMarkers: true,
@@ -84,8 +86,10 @@
                             directionsRenderer.setDirections(result);
                             directionsRenderers.push(directionsRenderer);
                         }
+                    } else if (status === 'ZERO_RESULTS') {
+                        console.warn(`目的地に到達するルートが見つかりません: ${JSON.stringify(destination)}`);
                     } else {
-                        console.error("Directions API error:", status);
+                        console.error(`Directions API error: ${status}`);
                     }
                 });
             });
