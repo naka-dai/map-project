@@ -26,6 +26,7 @@
         let map;
         let directionsService;
         let directionsRenderers = [];
+        const radiusKm = 40; // 初期半径
 
         document.addEventListener("DOMContentLoaded", () => {
             initMap();
@@ -44,42 +45,74 @@
                 { lat: 34.6937, lng: 135.5023 }, // 大阪
             ];
 
-            locations.forEach(location => calculateRoutes(location));
+            locations.forEach(location => calculateRoutes(location, radiusKm));
 
             document.getElementById("updateRoutes").addEventListener("click", () => {
+                const newRadius = parseFloat(document.getElementById("radiusInput").value);
+                if (isNaN(newRadius) || newRadius <= 0) {
+                    alert("有効な距離を入力してください。");
+                    return;
+                }
                 clearRoutes();
-                locations.forEach(location => calculateRoutes(location));
+                locations.forEach(location => calculateRoutes(location, newRadius));
             });
         }
 
-        function calculateRoutes(origin) {
-            const destination = { lat: 34.6937, lng: 135.5023 }; // サンプル目的地
+        function calculateRoutes(origin, radiusKm) {
+            const destinations = generateCirclePoints(origin, radiusKm);
 
-            const request = {
-                origin: origin,
-                destination: destination,
-                travelMode: 'DRIVING',
-            };
+            destinations.forEach(destination => {
+                const request = {
+                    origin: origin,
+                    destination: destination,
+                    travelMode: 'DRIVING',
+                };
 
-            directionsService.route(request, (result, status) => {
-                if (status === 'OK') {
-                    const directionsRenderer = new google.maps.DirectionsRenderer({
-                        map: map,
-                        suppressMarkers: true,
-                        polylineOptions: {
-                            strokeColor: '#FF0000',
-                            strokeOpacity: 0.6,
-                            strokeWeight: 3,
-                        },
-                    });
-                    directionsRenderer.setDirections(result);
-                    directionsRenderers.push(directionsRenderer);
-                } else if (status === 'ZERO_RESULTS') {
-                    console.warn("ルートが見つかりません:", request);
-                } else {
-                    console.error("Directions API error:", status);
-                }
+                directionsService.route(request, (result, status) => {
+                    if (status === 'OK') {
+                        const totalDistance = getTotalDistance(result.routes[0].legs);
+                        if (totalDistance <= radiusKm * 1000) { // 40km以内の経路のみ描画
+                            const directionsRenderer = new google.maps.DirectionsRenderer({
+                                map: map,
+                                suppressMarkers: true,
+                                polylineOptions: {
+                                    strokeColor: '#FF0000',
+                                    strokeOpacity: 0.6,
+                                    strokeWeight: 3,
+                                },
+                            });
+                            directionsRenderer.setDirections(result);
+                            directionsRenderers.push(directionsRenderer);
+                        }
+                    } else {
+                        console.error("Directions API error:", status);
+                    }
+                });
             });
+        }
+
+        function generateCirclePoints(origin, radiusKm) {
+            const points = [];
+            const numPoints = 36; // 10°ごとに分割
+
+            for (let i = 0; i < numPoints; i++) {
+                const angleRad = (i * Math.PI * 2) / numPoints;
+                const latOffset = (radiusKm / 111) * Math.cos(angleRad); // 緯度変位
+                const lngOffset = (radiusKm / (111 * Math.cos((origin.lat * Math.PI) / 180))) * Math.sin(angleRad); // 経度変位
+                points.push({
+                    lat: origin.lat + latOffset,
+                    lng: origin.lng + lngOffset,
+                });
+            }
+            return points;
+        }
+
+        function getTotalDistance(legs) {
+            let totalDistance = 0;
+            legs.forEach(leg => {
+                totalDistance += leg.distance.value; // メートル単位
+            });
+            return totalDistance;
         }
 
         function clearRoutes() {
