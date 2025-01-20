@@ -12,7 +12,7 @@
             margin: 10px;
         }
     </style>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCuThOGFiWKfdFpvRywRgWVekZvhCoUFt0&callback=initMap" async defer></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCuThOGFiWKfdFpvRywRgWVekZvhCoUFt0&callback=initMap" async></script>
 </head>
 <body>
     <div id="controls">
@@ -27,6 +27,7 @@
         let directionsService;
         let directionsRenderers = [];
 
+        // 地図の初期化
         function initializeMap() {
             map = new google.maps.Map(document.getElementById("map"), {
                 center: { lat: 35.6762, lng: 139.6503 }, // 日本中心
@@ -43,6 +44,7 @@
             drawRoutes(locations);
         }
 
+        // 経路の描画
         function drawRoutes(locations) {
             const radiusKm = parseFloat(document.getElementById("radiusInput").value);
 
@@ -63,6 +65,7 @@
             });
         }
 
+        // 経路計算
         function calculateRoutes(origin, radiusKm) {
             const destinations = generateCirclePoints(origin, radiusKm);
 
@@ -96,6 +99,7 @@
             });
         }
 
+        // 円周上の座標を生成
         function generateCirclePoints(origin, radiusKm) {
             const points = [];
             const numPoints = 36;
@@ -112,22 +116,25 @@
             return points;
         }
 
+        // 距離計算
         function getTotalDistance(legs) {
             return legs.reduce((sum, leg) => sum + leg.distance.value, 0);
         }
 
+        // 描画されたルートをクリア
         function clearRoutes() {
             directionsRenderers.forEach(renderer => renderer.setMap(null));
             directionsRenderers = [];
         }
 
-        // Google Maps APIのロード後に初期化
+        // Google Maps APIロード後に初期化
         window.addEventListener("load", () => {
-            if (typeof google !== "undefined") {
-                initializeMap();
-            } else {
-                console.error("Google Maps APIのロードに失敗しました。");
-            }
+            const checkGoogleLoaded = setInterval(() => {
+                if (typeof google !== "undefined" && google.maps) {
+                    clearInterval(checkGoogleLoaded);
+                    initializeMap();
+                }
+            }, 100);
         });
     </script>
 </body>
