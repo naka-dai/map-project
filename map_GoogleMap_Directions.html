@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Google Maps Directions API</title>
+    <meta charset="UTF-8">
+    <style>
+        #map {
+            height: 80vh;
+            width: 100%;
+        }
+        #controls {
+            margin: 10px;
+        }
+    </style>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCuThOGFiWKfdFpvRywRgWVekZvhCoUFt0&callback=initMap" async defer></script>
+</head>
+<body>
+    <div id="controls">
+        <label for="radiusInput">半径（km）：</label>
+        <input id="radiusInput" type="number" value="40" min="1" step="1"> 
+        <button id="updateRoutes">経路を更新</button>
+    </div>
+    <div id="map"></div>
+
+    <script>
+        let map;
+        let directionsService;
+        let directionsRenderers = [];
+        const radiusKm = 40; // 初期半径
+
+        function initMap() {
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: { lat: 35.6762, lng: 139.6503 }, // 日本中央付近
+                zoom: 8,
+            });
+
+            directionsService = new google.maps.DirectionsService();
+
+            // サンプル地点（CSVデータを想定）
+            const locations = [
+                { lat: 35.6895, lng: 139.6917 }, // 東京
+                { lat: 34.6937, lng: 135.5023 }, // 大阪
+            ];
+
+            // 経路を初期描画
+            locations.forEach(location => calculateRoutes(location, radiusKm));
+
+            // ボタンイベント
+            document.getElementById("updateRoutes").addEventListener("click", () => {
+                const newRadius = parseFloat(document.getElementById("radiusInput").value);
+                if (isNaN(newRadius) || newRadius <= 0) {
+                    alert("有効な半径を入力してください。");
+                    return;
+                }
+                clearRoutes(); // 既存の経路をクリア
+                locations.forEach(location => calculateRoutes(location, newRadius));
+            });
+        }
+
+        // 指定地点から40km以内の経路を描画
+        function calculateRoutes(origin, radiusKm) {
+            const destinations = generateCirclePoints(origin, radiusKm);
+
+            destinations.forEach(destination => {
+                const request = {
+                    origin: origin,
+                    destination: destination,
+                    travelMode: 'DRIVING',
+                };
+
+                directionsService.route(request, (result, status) => {
+                    if (status === 'OK') {
+                        const directionsRenderer = new google.maps.DirectionsRenderer({
+                            map: map,
+                            suppressMarkers: true, // マーカーを非表示
+                            polylineOptions: {
+                                strokeColor: '#FF0000',
+                                strokeOpacity: 0.6,
+                                strokeWeight: 3,
+                            },
+                        });
+                        directionsRenderer.setDirections(result);
+                        directionsRenderers.push(directionsRenderer);
+                    } else {
+                        console.error("Directions API error:", status);
+                    }
+                });
+            });
+        }
+
+        // 円周上のポイントを生成
+        function generateCirclePoints(origin, radiusKm) {
+            const points = [];
+            const numPoints = 36; // 10°ごとにポイントを配置
+
+            for (let i = 0; i < numPoints; i++) {
+                const angleRad = (i * Math.PI * 2) / numPoints;
+                const latOffset = (radiusKm / 111) * Math.cos(angleRad); // 緯度変位
+                const lngOffset = (radiusKm / (111 * Math.cos((origin.lat * Math.PI) / 180))) * Math.sin(angleRad); // 経度変位
+                points.push({
+                    lat: origin.lat + latOffset,
+                    lng: origin.lng + lngOffset,
+                });
+            }
+            return points;
+        }
+
+        // 既存の経路をクリア
+        function clearRoutes() {
+            directionsRenderers.forEach(renderer => renderer.setMap(null));
+            directionsRenderers = [];
+        }
+    </script>
+</body>
+</html>
