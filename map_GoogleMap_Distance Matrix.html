@@ -24,116 +24,101 @@
     <!-- Google Maps API -->
     <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCuThOGFiWKfdFpvRywRgWVekZvhCoUFt0&callback=initMap"></script>
     <script>
-        let map;
-        let directionsService;
-        let directionsRenderers = [];
+        document.addEventListener("DOMContentLoaded", () => {
+            let map;
+            let directionsService;
+            let directionsRenderers = [];
 
-        // Google Mapsの初期化
-        function initializeMap() {
-            map = new google.maps.Map(document.getElementById("map"), {
-                center: { lat: 35.6762, lng: 139.6503 }, // 日本中心
-                zoom: 8,
-            });
-
-            directionsService = new google.maps.DirectionsService();
-
-            const locations = [
-                { lat: 35.6895, lng: 139.6917 }, // 東京
-                { lat: 34.6937, lng: 135.5023 }, // 大阪
-            ];
-
-            drawRoutes(locations);
-
-            // ボタンイベントの設定
-            document.getElementById("updateRoutes").addEventListener("click", () => {
-                const newRadius = parseFloat(document.getElementById("radiusInput").value);
-                if (isNaN(newRadius) || newRadius <= 0) {
-                    alert("有効な距離を入力してください。");
-                    return;
-                }
-                clearRoutes();
-                drawRoutes(locations, newRadius);
-            });
-        }
-
-        // 経路の描画
-        function drawRoutes(locations, radiusKm = 40) {
-            locations.forEach(location => {
-                calculateRoutes(location, radiusKm);
-            });
-        }
-
-        // 経路計算
-        function calculateRoutes(origin, radiusKm) {
-            const destinations = generateCirclePoints(origin, radiusKm);
-
-            destinations.forEach(destination => {
-                const request = {
-                    origin: origin,
-                    destination: destination,
-                    travelMode: 'DRIVING',
-                };
-
-                directionsService.route(request, (result, status) => {
-                    if (status === 'OK') {
-                        const totalDistance = getTotalDistance(result.routes[0].legs);
-                        if (totalDistance <= radiusKm * 1000) {
-                            const directionsRenderer = new google.maps.DirectionsRenderer({
-                                map: map,
-                                suppressMarkers: true,
-                                polylineOptions: {
-                                    strokeColor: '#FF0000',
-                                    strokeOpacity: 0.6,
-                                    strokeWeight: 3,
-                                },
-                            });
-                            directionsRenderer.setDirections(result);
-                            directionsRenderers.push(directionsRenderer);
-                        }
-                    } else {
-                        console.warn(`ルートが見つかりません: ${JSON.stringify(destination)}`);
-                    }
+            function initializeMap() {
+                map = new google.maps.Map(document.getElementById("map"), {
+                    center: { lat: 35.6762, lng: 139.6503 }, // 日本中心
+                    zoom: 8,
                 });
-            });
-        }
 
-        // 円周上の座標を生成
-        function generateCirclePoints(origin, radiusKm) {
-            const points = [];
-            const numPoints = 36;
+                directionsService = new google.maps.DirectionsService();
 
-            for (let i = 0; i < numPoints; i++) {
-                const angleRad = (i * Math.PI * 2) / numPoints;
-                const latOffset = (radiusKm / 111) * Math.cos(angleRad);
-                const lngOffset = (radiusKm / (111 * Math.cos((origin.lat * Math.PI) / 180))) * Math.sin(angleRad);
-                points.push({
-                    lat: origin.lat + latOffset,
-                    lng: origin.lng + lngOffset,
+                const locations = [
+                    { lat: 35.6895, lng: 139.6917 }, // 東京
+                    { lat: 34.6937, lng: 135.5023 }, // 大阪
+                ];
+
+                drawRoutes(locations);
+
+                document.getElementById("updateRoutes").addEventListener("click", () => {
+                    const newRadius = parseFloat(document.getElementById("radiusInput").value);
+                    if (isNaN(newRadius) || newRadius <= 0) {
+                        alert("有効な距離を入力してください。");
+                        return;
+                    }
+                    clearRoutes();
+                    drawRoutes(locations, newRadius);
                 });
             }
-            return points;
-        }
 
-        // 距離計算
-        function getTotalDistance(legs) {
-            return legs.reduce((sum, leg) => sum + leg.distance.value, 0);
-        }
+            function drawRoutes(locations, radiusKm = 40) {
+                locations.forEach(location => calculateRoutes(location, radiusKm));
+            }
 
-        // 描画されたルートをクリア
-        function clearRoutes() {
-            directionsRenderers.forEach(renderer => renderer.setMap(null));
-            directionsRenderers = [];
-        }
+            function calculateRoutes(origin, radiusKm) {
+                const destinations = generateCirclePoints(origin, radiusKm);
 
-        // Google Maps APIロード後に初期化
-        window.onload = () => {
-            const intervalId = setInterval(() => {
-                if (typeof google !== 'undefined' && google.maps) {
-                    clearInterval(intervalId);
-                    initializeMap();
+                destinations.forEach(destination => {
+                    const request = {
+                        origin: origin,
+                        destination: destination,
+                        travelMode: 'DRIVING',
+                    };
+
+                    directionsService.route(request, (result, status) => {
+                        if (status === 'OK') {
+                            const totalDistance = getTotalDistance(result.routes[0].legs);
+                            if (totalDistance <= radiusKm * 1000) {
+                                const directionsRenderer = new google.maps.DirectionsRenderer({
+                                    map: map,
+                                    suppressMarkers: true,
+                                    polylineOptions: {
+                                        strokeColor: '#FF0000',
+                                        strokeOpacity: 0.6,
+                                        strokeWeight: 3,
+                                    },
+                                });
+                                directionsRenderer.setDirections(result);
+                                directionsRenderers.push(directionsRenderer);
+                            }
+                        } else {
+                            console.warn(`ルートが見つかりません: ${JSON.stringify(destination)}`);
+                        }
+                    });
+                });
+            }
+
+            function generateCirclePoints(origin, radiusKm) {
+                const points = [];
+                const numPoints = 8; // 主要方向に限定
+
+                for (let i = 0; i < numPoints; i++) {
+                    const angleRad = (i * Math.PI * 2) / numPoints;
+                    const latOffset = (radiusKm / 111) * Math.cos(angleRad);
+                    const lngOffset = (radiusKm / (111 * Math.cos((origin.lat * Math.PI) / 180))) * Math.sin(angleRad);
+                    points.push({
+                        lat: origin.lat + latOffset,
+                        lng: origin.lng + lngOffset,
+                    });
                 }
-            }, 100);
-        };
+                return points;
+            }
+
+            function getTotalDistance(legs) {
+                return legs.reduce((sum, leg) => sum + leg.distance.value, 0);
+            }
+
+            function clearRoutes() {
+                directionsRenderers.forEach(renderer => renderer.setMap(null));
+                directionsRenderers = [];
+            }
+
+            initializeMap();
+        });
     </script>
 </body>
 </html>
