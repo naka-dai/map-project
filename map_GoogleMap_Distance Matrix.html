@@ -12,7 +12,7 @@
             margin: 10px;
         }
     </style>
-    <!-- Google Maps APIをロード -->
+    <!-- Google Maps APIのロード -->
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCuThOGFiWKfdFpvRywRgWVekZvhCoUFt0&callback=initMap" async defer></script>
 </head>
 <body>
@@ -28,11 +28,7 @@
         let directionsService;
         let directionsRenderers = [];
 
-        document.addEventListener("DOMContentLoaded", () => {
-            initMap();
-        });
-
-        function initMap() {
+        function initializeMap() {
             map = new google.maps.Map(document.getElementById("map"), {
                 center: { lat: 35.6762, lng: 139.6503 }, // 日本中心
                 zoom: 8,
@@ -45,8 +41,15 @@
                 { lat: 34.6937, lng: 135.5023 }, // 大阪
             ];
 
+            drawRoutes(locations);
+        }
+
+        function drawRoutes(locations) {
             const radiusKm = parseFloat(document.getElementById("radiusInput").value);
-            locations.forEach(location => calculateRoutes(location, radiusKm));
+
+            locations.forEach(location => {
+                calculateRoutes(location, radiusKm);
+            });
 
             document.getElementById("updateRoutes").addEventListener("click", () => {
                 const newRadius = parseFloat(document.getElementById("radiusInput").value);
@@ -55,7 +58,9 @@
                     return;
                 }
                 clearRoutes();
-                locations.forEach(location => calculateRoutes(location, newRadius));
+                locations.forEach(location => {
+                    calculateRoutes(location, newRadius);
+                });
             });
         }
 
@@ -85,10 +90,8 @@
                             directionsRenderer.setDirections(result);
                             directionsRenderers.push(directionsRenderer);
                         }
-                    } else if (status === 'ZERO_RESULTS') {
-                        console.warn(`目的地に到達するルートが見つかりません: ${JSON.stringify(destination)}`);
                     } else {
-                        console.error(`Directions API error: ${status}`);
+                        console.warn(`ルートが見つかりません: ${JSON.stringify(destination)}`);
                     }
                 });
             });
@@ -111,17 +114,22 @@
         }
 
         function getTotalDistance(legs) {
-            let totalDistance = 0;
-            legs.forEach(leg => {
-                totalDistance += leg.distance.value;
-            });
-            return totalDistance;
+            return legs.reduce((sum, leg) => sum + leg.distance.value, 0);
         }
 
         function clearRoutes() {
             directionsRenderers.forEach(renderer => renderer.setMap(null));
             directionsRenderers = [];
         }
+
+        // Google Maps APIのロード後に初期化
+        window.addEventListener("load", () => {
+            if (typeof google !== "undefined") {
+                initializeMap();
+            } else {
+                console.error("Google Maps APIのロードに失敗しました。");
+            }
+        });
     </script>
 </body>
 </html>
